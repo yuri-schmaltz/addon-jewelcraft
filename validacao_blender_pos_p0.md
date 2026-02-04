@@ -117,6 +117,8 @@ Resultado esperado:
 Resultado esperado:
 
 - PASS: workflow executa `python -m compileall source tests`.
+- PASS: workflow executa smoke test com Blender headless (`tests/ci_smoke.py`).
+- PASS: log do smoke é publicado como artefato (`blender-smoke-log`).
 
 ---
 

@@ -53,7 +53,7 @@
 - A-003 corrigido em código (`source/operators/asset_manager/asset_ops.py`), pendente validação no Blender.
 - A-004 corrigido em código (`source/lib/on_load.py`) com guardas de idempotência.
 - A-005 mitigado em código: cache de localização migrou de `pickle` para JSON (`source/localization/__init__.py`).
-- A-006 mitigado em repositório com CI mínima de sintaxe (`.github/workflows/ci.yml`).
+- A-006 mitigado em repositório com CI de sintaxe + smoke headless Blender (`.github/workflows/ci.yml`, `tests/ci_smoke.py`).
 - A-001 mitigado localmente com sincronização de `source/assets` e geração de zip dev; validação no Blender ainda pendente.
 
 ---

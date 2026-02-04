@@ -85,6 +85,20 @@ Contributing
   * Look out for appropriate context, `Base` for example is used in the context of materials as `Base Metal`, which in other words means `Non-Presious Metal` and should not be translated as `Basis` or `Foundation`.
 * After translation is done submit it back through [issues][issues_url].
 
+### CI smoke test (headless Blender)
+
+* CI workflow runs:
+  1. `python -m compileall source tests`
+  2. Build dev package:
+     * `python scripts/sync_assets_from_release.py --force`
+     * `python scripts/build_dev_zip.py`
+  3. Blender headless smoke test:
+     * `blender -b --factory-startup --python tests/ci_smoke.py -- <addon_zip> jewelcraft`
+
+* Local packaging helper scripts:
+  * `scripts/sync_assets_from_release.py`
+  * `scripts/build_dev_zip.py`
+
 
 [download_latest]: https://github.com/mrachinskiy/jewelcraft/releases/download/v2.18.0-blender4.2.0/jewelcraft-2_18_0.zip?repository=https://mrachinskiy.github.io/api/v1/extensions.json&blender_version_min=4.2.0
 [download_v2_17_4]: https://github.com/mrachinskiy/jewelcraft/releases/download/v2.17.4-blender3.5.0/jewelcraft-2_17_4.zip

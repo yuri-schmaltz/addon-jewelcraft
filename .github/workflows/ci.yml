@@ -1,11 +1,23 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
       - main
       - master
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BLENDER_VERSION: "4.2.0"
+  BLENDER_CACHE_DIR: "${{ github.workspace }}/.cache/blender"
+  RELEASE_ZIP_URL: "https://github.com/mrachinskiy/jewelcraft/releases/download/v2.18.0-blender4.2.0/jewelcraft-2_18_0.zip"
+  RELEASE_ZIP_PATH: "${{ github.workspace }}/.cache/releases/jewelcraft-2_18_0.zip"
+  ADDON_MODULE: "jewelcraft"
 
 jobs:
   syntax-check:
@@ -22,3 +34,92 @@ jobs:
 
       - name: Compile sources
         run: python -m compileall source tests
+
+  blender-smoke:
+    runs-on: ubuntu-latest
+    needs: syntax-check
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore release zip cache
+        id: release-zip-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.RELEASE_ZIP_PATH }}
+          key: release-zip-${{ runner.os }}-jewelcraft-2_18_0
+
+      - name: Download release zip
+        if: steps.release-zip-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$(dirname "$RELEASE_ZIP_PATH")"
+          curl -fL --retry 3 --retry-delay 5 --user-agent "Mozilla/5.0" "$RELEASE_ZIP_URL" -o "$RELEASE_ZIP_PATH"
+
+      - name: Prepare addon assets and package
+        run: |
+          python scripts/sync_assets_from_release.py --zip "$RELEASE_ZIP_PATH" --force
+          python scripts/build_dev_zip.py
+
+      - name: Install Blender runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1 \
+            libsm6 \
+            libxi6 \
+            libxrender1 \
+            libxfixes3 \
+            libxrandr2 \
+            libxinerama1 \
+            libxcursor1 \
+            libxkbcommon0 \
+            libxxf86vm1
+
+      - name: Restore Blender cache
+        id: blender-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BLENDER_CACHE_DIR }}/blender-${{ env.BLENDER_VERSION }}-linux-x64
+          key: blender-${{ runner.os }}-${{ env.BLENDER_VERSION }}-linux-x64
+
+      - name: Download Blender
+        if: steps.blender-cache.outputs.cache-hit != 'true'
+        run: |
+          BLENDER_TAR="blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          BLENDER_URL="https://download.blender.org/release/Blender4.2/${BLENDER_TAR}"
+          mkdir -p "$BLENDER_CACHE_DIR"
+          curl -fL --retry 3 --retry-delay 5 --user-agent "Mozilla/5.0" "$BLENDER_URL" -o "$RUNNER_TEMP/$BLENDER_TAR"
+          tar -xf "$RUNNER_TEMP/$BLENDER_TAR" -C "$BLENDER_CACHE_DIR"
+
+      - name: Set Blender binary path
+        run: |
+          BLENDER_BIN="$BLENDER_CACHE_DIR/blender-${BLENDER_VERSION}-linux-x64/blender"
+          test -f "$BLENDER_BIN"
+          echo "BLENDER_BIN=$BLENDER_BIN" >> "$GITHUB_ENV"
+
+      - name: Run Blender headless smoke test
+        run: |
+          set -o pipefail
+          ADDON_ZIP="$(ls dist/jewelcraft-dev-*.zip | head -n1)"
+          "$BLENDER_BIN" -b --factory-startup --python tests/ci_smoke.py -- "$ADDON_ZIP" "$ADDON_MODULE" 2>&1 | tee blender-smoke.log
+
+      - name: Upload dev zip artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jewelcraft-dev-zip
+          path: dist/jewelcraft-dev-*.zip
+
+      - name: Upload smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-smoke-log
+          path: blender-smoke.log
