@@ -266,7 +266,7 @@ class WM_OT_asset_import(Operator):
         from ...lib import asset
 
         space_data = context.space_data
-        use_local_view = bool(space_data.local_view)
+        use_local_view = bool(space_data and space_data.local_view)
         collection = context.collection
         selected = list(context.selected_objects)
 
@@ -274,13 +274,18 @@ class WM_OT_asset_import(Operator):
             ob.select_set(False)
 
         imported = asset.asset_import_batch(self.filepath)
+        imported_objects = [ob for ob in imported.objects if ob is not None]
+
+        if not imported_objects:
+            self.report({"ERROR"}, "No objects found in selected asset")
+            return {"CANCELLED"}
 
         if imported.collections:
             for coll in imported.collections:
                 if not coll.users or coll.users == len(coll.users_dupli_group):
                     context.scene.collection.children.link(coll)
 
-        for ob in imported.objects:
+        for ob in imported_objects:
             if not ob.users:
                 collection.objects.link(ob)
 
@@ -289,7 +294,10 @@ class WM_OT_asset_import(Operator):
 
             ob.select_set(True)
 
-        if len(imported.objects) == 1:
+        active_ob = imported_objects[-1]
+
+        if len(imported_objects) == 1:
+            ob = imported_objects[0]
             ob.location = context.scene.cursor.location
 
             if context.mode == "EDIT_MESH":
@@ -297,9 +305,11 @@ class WM_OT_asset_import(Operator):
                 bpy.ops.object.mode_set(mode="OBJECT")
             elif self.use_parent and selected:
                 collection.objects.unlink(ob)
-                asset.ob_copy_and_parent(ob, selected)
+                active_ob = asset.ob_copy_and_parent(ob, selected)
+            else:
+                active_ob = ob
 
-        context.view_layer.objects.active = ob
+        context.view_layer.objects.active = active_ob
 
         return {"FINISHED"}
 

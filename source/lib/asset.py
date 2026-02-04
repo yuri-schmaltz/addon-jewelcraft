@@ -415,8 +415,9 @@ def bm_to_scene(bm, name="New object", color: Color | None = None) -> None:
         add_material(ob, name=name, color=color)
 
 
-def ob_copy_and_parent(ob: Object, parents: list[Object]) -> None:
+def ob_copy_and_parent(ob: Object, parents: list[Object]) -> Object:
     is_orig = True
+    active_ob = ob
     space_data = bpy.context.space_data
     use_local_view = bool(space_data and space_data.local_view)
 
@@ -434,10 +435,13 @@ def ob_copy_and_parent(ob: Object, parents: list[Object]) -> None:
             ob_copy.local_view_set(space_data, True)
 
         ob_copy.select_set(True)
-        ob.location = parent.location
-        ob.rotation_euler = parent.rotation_euler
-        ob.parent = parent
-        ob.matrix_parent_inverse = parent.matrix_basis.inverted()
+        ob_copy.location = parent.location
+        ob_copy.rotation_euler = parent.rotation_euler
+        ob_copy.parent = parent
+        ob_copy.matrix_parent_inverse = parent.matrix_basis.inverted()
+        active_ob = ob_copy
+
+    return active_ob
 
 
 def ob_copy_to_faces(ob: Object) -> None:

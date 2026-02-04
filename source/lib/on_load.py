@@ -8,11 +8,17 @@ from .. import var
 
 
 def handler_add():
-    bpy.app.handlers.load_post.append(_execute)
+    handlers = bpy.app.handlers.load_post
+
+    if _execute not in handlers:
+        handlers.append(_execute)
 
 
 def handler_del():
-    bpy.app.handlers.load_post.remove(_execute)
+    handlers = bpy.app.handlers.load_post
+
+    if _execute in handlers:
+        handlers.remove(_execute)
 
 
 @persistent

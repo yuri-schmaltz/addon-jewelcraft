@@ -4,10 +4,12 @@ assets/
 # IDE
 .idea/
 .vscode/
+dist/
 
 # Python byte-compiled
 __pycache__/
 *.pickle
+*__cache__.json
 
 # =========================
 # Operating System Files
